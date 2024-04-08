@@ -1,4 +1,4 @@
-import cligen
+import cligen, times
 
 {.push header: "<AwFmIndex.h>".}
 type 
@@ -33,10 +33,10 @@ type
   AwFmKmerSearchList {.importc: "struct AwFmKmerSearchList".} = object
     capacity: csize_t
     count: csize_t
-    kmerSearchData: array[500001, AwFmKmerSearchData]
+    kmerSearchData: array[100000001, AwFmKmerSearchData]
 
 proc awFmCreateIndexFromFasta(index: ptr ref AwFmIndex,
-                              config: AwFmIndexConfiguration,
+                              config: ptr AwFmIndexConfiguration,
                               fastaSrc: cstring,
                               indexFileSrc: cstring): AwFmReturnCode {.importc.}
 
@@ -57,22 +57,23 @@ proc awFmSingleKmerExists(index: ref AwFmIndex, km: cstring, kmerLength: uint16)
 proc awFmParallelSearchCount(index: ref AwFmIndex, searchList: ref AwFmKmerSearchList, numThreads: uint8) {.importc.}
 {.pop.}
 
-proc map(index: string, km: string = "AGCCTGA") =
+proc map(index: string, km: string = "AGCCTGA", reps: int = 1, threads: int = 4) =
   let
     indexP = new(AwFmIndex)
   echo awFmReadIndexFromFile(indexP.unsafeAddr, index, true)
 
   var
-    searchList = awFmCreateKmerSearchList(500000)
-  for i in 0..500000:
+    searchList = awFmCreateKmerSearchList(reps.csize_t)
+  for i in 0..reps:
     searchList.kmerSearchData[i].kmerString = km
     searchList.kmerSearchData[i].kmerLength = km.len.uint64
-  searchList.count = 500000
+  searchList.count = reps.csize_t
+  let time = cpuTime()
   awFmParallelSearchCount(indexP,
                           searchList,
                           4)
+  echo "Time parallelSearchCount: ", cpuTime() - time
   echo searchList.kmerSearchData[0].count
-  awFmDeallocKmerSearchList(searchList)
   awFmDeallocIndex(indexP)
 
 proc index(fasta: string,
@@ -87,7 +88,7 @@ proc index(fasta: string,
       alphabetType: AwFmAlphabetDna,
       keepSuffixArrayInMemory: false,
       storeOriginalSequence: false)
-  echo awFmCreateIndexFromFasta(indexP.unsafeAddr, conf, fasta, index)
+  echo awFmCreateIndexFromFasta(indexP.unsafeAddr, conf.unsafeAddr, fasta, index)
   awFmDeallocIndex(indexP)
 
 dispatchMulti([map], [index])
