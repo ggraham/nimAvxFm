@@ -36,7 +36,7 @@ type
     kmerSearchData: array[500001, AwFmKmerSearchData]
 
 proc awFmCreateIndexFromFasta(index: ptr ref AwFmIndex,
-                              config: ptr AwFmIndexConfiguration,
+                              config: AwFmIndexConfiguration,
                               fastaSrc: cstring,
                               indexFileSrc: cstring): AwFmReturnCode {.importc.}
 
@@ -87,7 +87,7 @@ proc index(fasta: string,
       alphabetType: AwFmAlphabetDna,
       keepSuffixArrayInMemory: false,
       storeOriginalSequence: false)
-  echo awFmCreateIndexFromFasta(indexP.unsafeAddr, conf.unsafeAddr, fasta, index)
+  echo awFmCreateIndexFromFasta(indexP.unsafeAddr, conf, fasta, index)
   awFmDeallocIndex(indexP)
 
 dispatchMulti([map], [index])
